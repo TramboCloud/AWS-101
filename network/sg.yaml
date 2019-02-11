@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This template deploys two security groups to route traffic from public ALB
+  to private ECS instances.
+
+Resources:
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Fn::ImportValue:
+            "demo-VPC"
+      GroupName: !Sub "${AWS::StackName} SG ALB Public"
+      GroupDescription: !Sub "${AWS::StackName} SG ALB Public"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName} SG ALB Public"
+
+  ContainerInstancesSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Fn::ImportValue:
+            "demo-VPC"
+      GroupName: !Sub "${AWS::StackName} SG Container Instance"
+      GroupDescription: !Sub "${AWS::StackName} SG Container Instance"
+      SecurityGroupIngress:
+      - IpProtocol: -1
+        SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 6379
+        ToPort: 6379
+        CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName} SG Container Instance"
+
+Outputs:
+
+  ALBSecutiryGroup:
+    Description: Secutiry group created for load balancer
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: "demo-sg-alb"
+
+  ECSSecutiryGroup:
+    Description: Secutiry group created for ECS instances in cluster
+    Value: !Ref ContainerInstancesSecurityGroup
+    Export:
+      Name: "demo-sg-ecs"
