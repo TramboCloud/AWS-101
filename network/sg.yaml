@@ -4,13 +4,6 @@ Description: >
   This template deploys two security groups to route traffic from public ALB
   to private ECS instances.
 
-Parameters:
-
-  Mycidrip:
-    Description: My public ip
-    Type: String
-    Default: 181.174.102.51/32
-
 Resources:
 
   LoadBalancerSecurityGroup:
@@ -33,7 +26,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: !Ref Mycidrip
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName} SG ALB Public"
