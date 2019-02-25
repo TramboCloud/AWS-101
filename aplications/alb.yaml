@@ -48,6 +48,8 @@ Outputs:
   ApplicationLoadBalancerEndpoint:
     Description: DNS name of the ApplicationLoadBalancer
     Value: !GetAtt 'ApplicationLoadBalancer.DNSName'
+    Export:
+        Name: "demo-LoadBalancer"
   TargetGroup:
     Description: TargetGroup for ABL
     Value: !Ref TargetGroup

@@ -66,9 +66,6 @@ Parameters:
     Description: AMI ID optimized for ecs. Do not change to get latest
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux/recommended/image_id
-  RepositoryName:
-    Type: String
-    Default: demoecr
 Resources:
 
   ECSCluster:
@@ -143,27 +140,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
         - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
-  ECRRepository:
-    Type: "AWS::ECR::Repository"
-    Properties:
-      RepositoryName: !Ref RepositoryName
-      RepositoryPolicyText:
-        Version: "2012-10-17"
-        Statement:
-          -
-            Sid: AllowPushPull
-            Effect: Allow
-            Principal:
-              AWS:
-                - "*"
-            Action:
-              - "ecr:GetDownloadUrlForLayer"
-              - "ecr:BatchGetImage"
-              - "ecr:BatchCheckLayerAvailability"
-              - "ecr:PutImage"
-              - "ecr:InitiateLayerUpload"
-              - "ecr:UploadLayerPart"
-              - "ecr:CompleteLayerUpload"
 Outputs:
   Cluster:
     Description: The created ECS cluster
