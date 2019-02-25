@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploys a service into ECS cluster
+Parameters:
+  TaskImage:
+    Description: ID of docker image with tag
+    Type: String
+Resources:
+  CloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref AWS::StackName
+      RetentionInDays: 365
+  TaskDefinitionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub TaskDefinitionRole-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+          - PolicyName: !Sub task-${AWS::StackName}
+            PolicyDocument:
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - ssm:*
+                    - kms:*
+                    - sts:*
+                    - s3:*
+                  Resource:
+                    - "*"
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      TaskRoleArn: !Ref TaskDefinitionRole
+      Family: !Sub ${AWS::StackName}-task
+      ContainerDefinitions:
+        - Name: demo
+          Essential: true
+          Image: !Ref TaskImage
+          Memory: 512
+          Cpu: 512
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CloudwatchLogsGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Sub ${AWS::StackName}-nginx
+          PortMappings:
+            - ContainerPort: 80
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Fn::ImportValue:
+            "demo-ecs-cluster"
+      ServiceName: !Ref AWS::StackName
+      Role: !Ref 'ServiceRole'
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount: 1
+      HealthCheckGracePeriodSeconds: 300
+      LoadBalancers:
+        - ContainerName: demo
+          ContainerPort: 80
+          TargetGroupArn:
+            Fn::ImportValue:
+                "demo-targetgroup"
+      TaskDefinition: !Ref 'TaskDefinition'
+  ServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ServiceRole-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole
+Outputs:
+  ServiceArn:
+    Description: ARN of the created Service.
+    Value: !Ref 'Service'

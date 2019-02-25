@@ -1,0 +1,55 @@
+Description: |
+  Deploys an ApplicationLoadBalancer
+Resources:
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${AWS::StackName}-PublicALB"
+      SecurityGroups:
+        - Fn::ImportValue:
+            "demo-sg-alb"
+      Subnets:
+        - Fn::ImportValue:
+            "demo-PublicSubnet1"
+        - Fn::ImportValue:
+            "demo-PublicSubnet2"
+  ApplicationLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref 'TargetGroup'
+      LoadBalancerArn: !Ref 'ApplicationLoadBalancer'
+      Port: 80
+      Protocol: HTTP
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn:
+      - ApplicationLoadBalancer
+    Properties:
+      Name: !Sub "${AWS::StackName}-target-group"
+      Port: 80
+      Protocol: HTTP
+      VpcId:
+        Fn::ImportValue:
+            "demo-VPC"
+      HealthCheckTimeoutSeconds: 15
+      HealthCheckIntervalSeconds: 20
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200
+Outputs:
+  Listener:
+    Description: ApplicationLoadBalancer Listener
+    Value: !Ref 'ApplicationLoadBalancerListener'
+  ApplicationLoadBalancerEndpoint:
+    Description: DNS name of the ApplicationLoadBalancer
+    Value: !GetAtt 'ApplicationLoadBalancer.DNSName'
+  TargetGroup:
+    Description: TargetGroup for ABL
+    Value: !Ref TargetGroup
+    Export:
+        Name: "demo-targetgroup"

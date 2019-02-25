@@ -11,3 +11,11 @@ El objetivo general de este taller es crear una perspectiva general sobre las te
 + Monitoreo.
 
 ![Introduccion](/images/introducion.png)
+
+### Orden para subir tu infraestructura
+
+1. network/vpc.yaml
+2. network/sg.yaml
+3. compute/ecs.yaml
+4. aplications/alb.yaml
+5. aplications/service.yaml
