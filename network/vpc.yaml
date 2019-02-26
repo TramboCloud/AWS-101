@@ -8,6 +8,12 @@ Description: >
 
 Parameters:
 
+  KeyPair:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the container
+      instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be a valid EC2 keypair.
+
   CidrBlock:
     Description: Please enter the IP range (CIDR notation) for this VPC
     Type: String
@@ -159,6 +165,77 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs { Ref: "AWS::Region" } ]
+      IamInstanceProfile: !Ref ContainerInstanceProfile
+      ImageId: !Ref ECSAMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPair
+      SecurityGroupIds:
+        - Fn::ImportValue:
+            "demo-sg-ecs"
+      SubnetId:
+        Fn::ImportValue:
+          "demo-PrivateSubnet1"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName} Container Instance"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum -y update
+          yum install -y aws-cfn-bootstrap aws-cli
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          # SSM Agent
+          cd /tmp
+          sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Fn::ImportValue:
+            "demo-VPC"
+      GroupName: !Sub "${AWS::StackName} SG ALB Public"
+      GroupDescription: !Sub "${AWS::StackName} SG ALB Public"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName} SG ALB Public"
+
+  ContainerInstancesSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Fn::ImportValue:
+            "demo-VPC"
+      GroupName: !Sub "${AWS::StackName} SG Container Instance"
+      GroupDescription: !Sub "${AWS::StackName} SG Container Instance"
+      SecurityGroupIngress:
+      - IpProtocol: -1
+        SourceSecurityGroupId: !Ref PublicSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 6379
+        ToPort: 6379
+        CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName} SG Container Instance"
 
 Outputs:
 
